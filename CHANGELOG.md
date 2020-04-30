@@ -1,3 +1,12 @@
+# [0.5.0-1]
+
+Built on top of upstream rust-vmm/kvm-ioctls v0.5.0.
+
+## Changed
+
+- Consume 'kvm-bindings' dependency from 'github.com/firecracker-microvm'
+  which provides versioned bindings for x86_64 state structs.
+
 # v0.5.0
 
 ## Added
