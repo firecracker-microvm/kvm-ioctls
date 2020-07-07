@@ -1,3 +1,9 @@
+# [0.5.0-2]
+
+## Changed
+
+- Upgrade to kvm-bindings v0.2.0-2 which uses versionize v0.1.1.
+
 # [0.5.0-1]
 
 Built on top of upstream rust-vmm/kvm-ioctls v0.5.0.
