@@ -11,6 +11,7 @@ use std::os::raw::c_void;
 use std::os::raw::{c_int, c_ulong};
 use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 
+use cap::Cap;
 use ioctls::device::new_device;
 use ioctls::device::DeviceFd;
 use ioctls::vcpu::new_vcpu;
@@ -636,23 +637,33 @@ impl VmFd {
     ///    .register_ioevent(&evtfd, &pio_addr, NoDatamatch)
     ///    .unwrap();
     /// vm_fd
-    ///    .register_ioevent(&evtfd, &mmio_addr, NoDatamatch)
+    ///    .register_ioevent(&evtfd, &mmio_addr, 0x1234u32)
     ///    .unwrap();
     /// vm_fd
-    ///    .unregister_ioevent(&evtfd, &pio_addr)
+    ///    .unregister_ioevent(&evtfd, &pio_addr, NoDatamatch)
     ///    .unwrap();
     /// vm_fd
-    ///    .unregister_ioevent(&evtfd, &mmio_addr)
+    ///    .unregister_ioevent(&evtfd, &mmio_addr, 0x1234u32)
     ///    .unwrap();
     /// ```
     ///
-    pub fn unregister_ioevent(&self, fd: &EventFd, addr: &IoEventAddress) -> Result<()> {
+    pub fn unregister_ioevent<T: Into<u64>>(
+        &self,
+        fd: &EventFd,
+        addr: &IoEventAddress,
+        datamatch: T,
+    ) -> Result<()> {
         let mut flags = 1 << kvm_ioeventfd_flag_nr_deassign;
+        if std::mem::size_of::<T>() > 0 {
+            flags |= 1 << kvm_ioeventfd_flag_nr_datamatch
+        }
         if let IoEventAddress::Pio(_) = *addr {
             flags |= 1 << kvm_ioeventfd_flag_nr_pio
         }
 
         let ioeventfd = kvm_ioeventfd {
+            datamatch: datamatch.into(),
+            len: std::mem::size_of::<T>() as u32,
             addr: match addr {
                 IoEventAddress::Pio(ref p) => *p as u64,
                 IoEventAddress::Mmio(ref m) => *m,
@@ -1206,6 +1217,40 @@ impl VmFd {
     pub fn run_size(&self) -> usize {
         self.run_size
     }
+
+    /// Wrapper over `KVM_CHECK_EXTENSION`.
+    ///
+    /// Returns 0 if the capability is not available and a positive integer otherwise.
+    fn check_extension_int(&self, c: Cap) -> i32 {
+        // Safe because we know that our file is a VM fd and that the extension is one of the ones
+        // defined by kernel.
+        unsafe { ioctl_with_val(self, KVM_CHECK_EXTENSION(), c as c_ulong) }
+    }
+
+    /// Checks if a particular `Cap` is available.
+    ///
+    /// Returns true if the capability is supported and false otherwise.
+    /// See the documentation for `KVM_CHECK_EXTENSION`.
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - VM capability to check.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use kvm_ioctls::Kvm;
+    /// use kvm_ioctls::Cap;
+    ///
+    /// let kvm = Kvm::new().unwrap();
+    /// let vm = kvm.create_vm().unwrap();
+    /// // Check if `KVM_CAP_MP_STATE` is supported.
+    /// assert!(vm.check_extension(Cap::MpState));
+    /// ```
+    ///
+    pub fn check_extension(&self, c: Cap) -> bool {
+        self.check_extension_int(c) > 0
+    }
 }
 
 /// Helper function to create a new `VmFd`.
@@ -1440,21 +1485,29 @@ mod tests {
         let mmio_addr = IoEventAddress::Mmio(0x1000);
 
         // First try to unregister addresses which have not been registered.
-        assert!(vm_fd.unregister_ioevent(&evtfd, &pio_addr).is_err());
-        assert!(vm_fd.unregister_ioevent(&evtfd, &mmio_addr).is_err());
+        assert!(vm_fd
+            .unregister_ioevent(&evtfd, &pio_addr, NoDatamatch)
+            .is_err());
+        assert!(vm_fd
+            .unregister_ioevent(&evtfd, &mmio_addr, NoDatamatch)
+            .is_err());
 
         // Now register the addresses
         assert!(vm_fd
             .register_ioevent(&evtfd, &pio_addr, NoDatamatch)
             .is_ok());
         assert!(vm_fd
-            .register_ioevent(&evtfd, &mmio_addr, NoDatamatch)
+            .register_ioevent(&evtfd, &mmio_addr, 0x1337u16)
             .is_ok());
 
         // Try again unregistering the addresses. This time it should work
         // since they have been previously registered.
-        assert!(vm_fd.unregister_ioevent(&evtfd, &pio_addr).is_ok());
-        assert!(vm_fd.unregister_ioevent(&evtfd, &mmio_addr).is_ok());
+        assert!(vm_fd
+            .unregister_ioevent(&evtfd, &pio_addr, NoDatamatch)
+            .is_ok());
+        assert!(vm_fd
+            .unregister_ioevent(&evtfd, &mmio_addr, 0x1337u16)
+            .is_ok());
     }
 
     #[test]
@@ -1732,5 +1785,12 @@ mod tests {
         }
         let irq_routing = kvm_irq_routing::default();
         assert!(vm.set_gsi_routing(&irq_routing).is_ok());
+    }
+
+    #[test]
+    fn test_check_extension() {
+        let kvm = Kvm::new().unwrap();
+        let vm = kvm.create_vm().unwrap();
+        assert!(vm.check_extension(Cap::MpState));
     }
 }
