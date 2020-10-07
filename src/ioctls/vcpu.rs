@@ -1049,6 +1049,15 @@ impl VcpuFd {
         Ok(reg_value)
     }
 
+    /// Enables guest debugging and sets specific debug registers for x86
+    pub fn set_guest_debug(&self, debug_struct: &kvm_guest_debug) -> Result<()> {
+        let ret = unsafe { ioctl_with_ref(self, KVM_SET_GUEST_DEBUG(), debug_struct) };
+        if ret < 0 {
+            return Err(errno::Error::last());
+        }
+        Ok(())
+    }
+
     /// Triggers the running of the current virtual CPU returning an exit reason.
     ///
     /// See documentation for `KVM_RUN`.

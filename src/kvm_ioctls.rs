@@ -225,6 +225,9 @@ ioctl_iow_nr!(KVM_GET_DEVICE_ATTR, KVMIO, 0xe2, kvm_device_attr);
 /* Available with KVM_CAP_DEVICE_CTRL */
 ioctl_iow_nr!(KVM_HAS_DEVICE_ATTR, KVMIO, 0xe3, kvm_device_attr);
 
+
+ioctl_iow_nr!(KVM_SET_GUEST_DEBUG, KVMIO, 0x9b, kvm_guest_debug);
+
 #[cfg(test)]
 mod tests {
     use std::fs::File;
