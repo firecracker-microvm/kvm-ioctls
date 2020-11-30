@@ -11,6 +11,7 @@ use vmm_sys_util::errno;
 use vmm_sys_util::ioctl::{ioctl_with_mut_ref, ioctl_with_ref};
 
 /// Wrapper over the file descriptor obtained when creating an emulated device in the kernel.
+/// Test latest pull of kvm-ioctl
 pub struct DeviceFd {
     fd: File,
 }
