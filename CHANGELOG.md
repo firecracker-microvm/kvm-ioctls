@@ -1,3 +1,9 @@
+# [0.6.0-3]
+
+## Changed
+
+- Upgrade to kvm-bindings v0.3.0-3.
+
 # [0.6.0-2]
 
 ## Changed
