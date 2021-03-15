@@ -1,5 +1,9 @@
-[![Build Status](https://badge.buildkite.com/9e0e6c88972a3248a0908506d6946624da84e4e18c0870c4d0.svg)](https://buildkite.com/rust-vmm/kvm-ioctls-ci)
-![crates.io](https://img.shields.io/crates/v/kvm-ioctls.svg)
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+
+# DEPRECATED
+
+This is no longer supported, please consider using upstream
+https://github.com/rust-vmm/kvm-ioctls directly.
 
 # kvm-ioctls
 
